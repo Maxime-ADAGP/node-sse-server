@@ -1,7 +1,14 @@
+const fs = require('fs')
+const https = require('https')
+
 const express = require('express')
 const bodyParser = require('body-parser')
 
+const key = fs.readFileSync('./key.pem')
+const cert = fs.readFileSync('./cert.pem')
+
 const app = express()
+const server = https.createServer({key, cert}, app)
 
 app.use(bodyParser.json())
 
@@ -68,6 +75,6 @@ function eventsHandler(request, response, next) {
   
 app.get('/events', eventsHandler)
 
-app.listen(PORT, () => {
-  console.log(`Facts Events service listening at http://localhost:${PORT}`)
+server.listen(PORT, () => {
+  console.log(`Facts Events service listening at https://localhost:${PORT}`)
 })
