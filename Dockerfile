@@ -12,4 +12,4 @@ RUN npm install
 COPY ./server.js .
 EXPOSE ${PORT}
 
-CMD [ "node", "server.js" ]
+CMD [ "node", "server-data.js" ]
