@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: Node Server-Sent Events
+  version: 1.0.0
+  contact: {}
+servers:
+  - url: localhost:3000
+paths:
+  /status:
+    get:
+      summary: API Status
+      description: API Status
+      operationId: apiStatus
+      responses:
+        '200':
+          description: ''
+  /login/user:
+    get:
+      summary: Obtain USER-privileged JWT
+      description: Obtain USER-privileged JWT
+      operationId: obtainUserPrivilegedJwt
+      responses:
+        '200':
+          description: ''
+  /login/admin:
+    get:
+      summary: Obtain ADMIN-privileged JWT
+      description: Obtain ADMIN-privileged JWT
+      operationId: obtainAdminPrivilegedJwt
+      responses:
+        '200':
+          description: ''
+  /fact:
+    post:
+      summary: Send GUEST-level fact
+      description: Send GUEST-level fact
+      operationId: sendGuestLevelFact
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fact:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      example: This is a fact!
+                type:
+                  type: string
+                  example: notification
+            example:
+              fact:
+                message: This is a fact!
+              type: notification
+      responses:
+        '200':
+          description: ''
+  /fact/user:
+    post:
+      summary: Send USER-level fact
+      description: Send USER-level fact
+      operationId: sendUserLevelFact
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fact:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      example: This is a fact!
+                type:
+                  type: string
+                  example: notification
+            example:
+              fact:
+                message: This is a fact!
+              type: notification
+      responses:
+        '200':
+          description: ''
+  /fact/admin:
+    post:
+      summary: Send ADMIN-level fact
+      description: Send ADMIN-level fact
+      operationId: sendAdminLevelFact
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fact:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      example: This is a fact!
+                type:
+                  type: string
+                  example: notification
+            example:
+              fact:
+                message: This is a fact!
+              type: notification
+      responses:
+        '200':
+          description: ''
+  /events:
+    get:
+      summary: Event Stream [ADMIN]
+      description: Event Stream [ADMIN]
+      operationId: eventStreamAdmin
+      responses:
+        '200':
+          description: ''
+tags: []
