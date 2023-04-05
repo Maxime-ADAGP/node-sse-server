@@ -1,4 +1,4 @@
-name: Run ESLint on server
+name: Pass ESLint
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  lint:
 
     runs-on: ubuntu-latest
 
