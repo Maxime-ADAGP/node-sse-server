@@ -16,79 +16,111 @@
  */
 
 const express = require('express')
-const bodyParser = require('body-parser')
+const jwt = require('jsonwebtoken')
+const { expressjwt: ejwt } = require('express-jwt')
+const cors = require('cors')
+const SSEChannel = require('sse-pubsub')
 
-const key = fs.readFileSync('./key.pem')
-const cert = fs.readFileSync('./cert.pem')
+const { PORT = 3000, JWT_SECRET } = process.env
+if (!JWT_SECRET) {
+    console.error('JWT_SECRET env variable is undefined!')
+    process.exit(1)
+}
+const JWT_algorithms = ['HS256']
 
+const GUEST_USER = 1
+const LOGGED_USER = GUEST_USER + 1
+const ADMIN_USER = LOGGED_USER + 1
 const app = express()
-const server = https.createServer({key, cert}, app)
+app.use(cors())
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
 
-app.use(bodyParser.json())
-
-app.get('/status', (request, response) => response.json({clients: clients.length}))
-
-const PORT = 3000
-
-let clients = []
-let facts = []
-
-/**
- * @param {string} msgToSend the string to send
- * @returns {string} event-stream compliant string
- */
-function dataString(msgToSend) {
-    return `data: ${msgToSend}\n\n`
+const channelOptions = {
+    pingInterval: 3000,
+    maxStreamDuration: 30_000_000,
+    clientRetryInterval: 1000,
+    startId: 1,
+    historySize: 1000,
+    rewind: 1000
 }
 
-/**
- * @param {express.Response} clientResponse client response to write date onto
- */
- function sendNewDate(clientResponse) {
-    return clientResponse.write(dataString(new Date().toISOString()))
+const channels = {
+    admin: new SSEChannel(channelOptions),
+    user: new SSEChannel(channelOptions),
+    guest: new SSEChannel(channelOptions),
 }
 
-/**
- * @param {express.Response} clientResponse 
- * @param {*} dataObject any object. This will be stringified using `JSON.stringify()`
- */
-function sendJson(clientResponse, dataObject) {
-    return clientResponse.write(dataString(JSON.stringify(dataObject)))
-}
-
-function eventsHandler(request, response, next) {
-    const headers = {
-        'Content-Type': 'text/event-stream',
-        'Connection': 'keep-alive',
-        'Cache-Control': 'no-cache'
+app.get('/status', (_req, res) => res.json({
+    adminClients: channels.admin.listClients(),
+    userClients: channels.user.listClients(),
+    guestClients: channels.guest.listClients(),
+    count: {
+        admin: channels.admin.getSubscriberCount(),
+        user: channels.user.getSubscriberCount(),
+        guest: channels.guest.getSubscriberCount(),
+        total: channels.admin.getSubscriberCount() + channels.user.getSubscriberCount() + channels.guest.getSubscriberCount()
     }
-    response.writeHead(200, headers)
-
-    const now = new Date()
-
-    const data = dataString(now.toISOString())
-
-    response.write(data)
-
-    const clientId = now.getTime()
-    console.log(`New client - ${clientId}`)
-
-    const newClient = {
-        id: clientId,
-        interval: setInterval(sendNewDate, 1000, response)
-    }
-
-    clients.push(newClient)
-
-    request.on('close', () => {
-        console.log(`${clientId} Connection closed`)
-        clearInterval(newClient.interval)
-        clients = clients.filter(client => client.id !== clientId)
-    })
-}
+}))
   
-app.get('/events', eventsHandler)
+app.get('/events',
+    ejwt({ secret: JWT_SECRET, algorithms: JWT_algorithms, credentialsRequired: false }),
+    (req, res) => {
+        // if no auth, consider it a guest
+        if (!req.auth?.privilegeLevel) {
+            req.auth = {
+                privilegeLevel: GUEST_USER
+            }
+        }
 
-server.listen(PORT, () => {
-  console.log(`Facts Events service listening at https://localhost:${PORT}`)
+        switch (req.auth.privilegeLevel) {
+            case GUEST_USER: channels.guest.subscribe(req, res); return
+            case LOGGED_USER: channels.user.subscribe(req, res); return
+            case ADMIN_USER: channels.admin.subscribe(req, res); return
+
+            default: return console.error(`Unknown privilege level: ${req.auth.privilegeLevel}`)
+        }
+    }
+)
+
+function sendFact(fact, type='', privilegeLevel=GUEST_USER) {
+    switch (privilegeLevel) {
+        case GUEST_USER:
+            channels.guest.publish(JSON.stringify(fact), type)
+        // eslint-disable-next-line no-fallthrough
+        case LOGGED_USER:
+            channels.user.publish(JSON.stringify(fact), type)
+        // eslint-disable-next-line no-fallthrough
+        case ADMIN_USER:
+            channels.admin.publish(JSON.stringify(fact), type)
+            break
+
+        default:
+            console.error(`Unknown privilege level: ${privilegeLevel}`)
+    }
+}
+
+app.post('/fact(/:privilege)?', (req, res) => {
+    const newFact = req.body.fact
+    const factType = req.body.type || ''
+    const privilege = req.params.privilege
+
+    if (privilege === 'admin') sendFact(newFact, factType, ADMIN_USER)
+    else if (privilege === 'user') sendFact(newFact, factType, LOGGED_USER)
+    else sendFact(newFact, factType)
+
+    return res.json(req.body)
+})
+
+app.get('/login/:privilege', (req, res) => {
+    const privilege = req.params.privilege
+
+    if (privilege === 'admin') return res.json({ token: jwt.sign({ privilegeLevel: ADMIN_USER }, JWT_SECRET) })
+    if (privilege === 'user') return res.json({ token: jwt.sign({ privilegeLevel: LOGGED_USER }, JWT_SECRET) })
+    
+    return res.status(400).json({ message: 'Only "admin" and "user" privileges are supported' })
+})
+
+app.listen(PORT, () => {
+  console.log(`Facts Events service listening at http://localhost:${PORT}`)
 })

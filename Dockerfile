@@ -8,11 +8,11 @@ ENV JWT_SECRET=
 ## Install build toolchain, install node deps and compile native add-ons
 RUN apk add --no-cache python3 make g++
 COPY ./package*.json .
-RUN npm install
+RUN npm install --omit=dev
 
 COPY ./server.js .
 EXPOSE ${PORT}
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD curl --fail http://localhost:${PORT}/status || exit 1
 
-CMD [ "node", "server.js" ]
+CMD [ "npm", "start" ]

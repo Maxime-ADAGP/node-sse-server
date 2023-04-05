@@ -10,8 +10,8 @@
     "eslint": "^8.37.0"
   },
   "scripts": {
-    "start": "node server-data.js",
-    "lint": "eslint server-data.js",
-    "dev": "JWT_SECRET=verysecret node server-data.js"
+    "start": "node server.js",
+    "lint": "eslint server.js",
+    "dev": "JWT_SECRET=verysecret node server.js"
   }
 }
