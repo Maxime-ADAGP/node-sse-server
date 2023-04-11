@@ -18,7 +18,13 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "PORT=3000 JWT_SECRET=verysecret",
+	// "postCreateCommand": "",
+
+	"remoteEnv": {
+		// generated via `openssl rand -hex 32'
+		"JWT_SECRET": "1d008864b7f6c6db8c482ffe370ae8a3ae86aad206591a1177e40c16d02f9219",
+		"PORT": "3000"
+	},
 
 	// Configure tool-specific properties.
 	"customizations": {
